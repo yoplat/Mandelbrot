@@ -1,4 +1,5 @@
 #include <complex>
+#include <vector>
 
 #include "timer.h"
 
@@ -26,6 +27,29 @@ bool run_point_complex(Complex c, int max_iter = 100);
  * Uses simple double(s).
  */
 bool run_point_double(double r, double i, int max_iter = 100);
+
+/*
+ * Returns a vector representing a grid of points to check if they are
+ * contained in the mandelbrot set.
+ * Each element is true iff it's inside the set.
+ * `width` and `height` are the resolutions in the real and img axes;
+ * Single threaded solution.
+ */
+std::vector<uint8_t> mandelbrot_points_iterative(double r_start, double r_end,
+                                                 double i_start, double i_end,
+                                                 size_t width, size_t height,
+                                                 size_t max_iter = 100);
+/*
+ * Returns a vector representing a grid of points to check if they are
+ * contained in the mandelbrot set.
+ * Each element is true iff it's inside the set.
+ * `width` and `height` are the resolutions in the real and img axes;
+ * Single threaded solution.
+ */
+std::vector<uint8_t>
+mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
+                                 double i_end, size_t width, size_t height,
+                                 size_t max_iter = 100);
 
 /*
  * Checks that both run_point_complex and run_point_double are working
