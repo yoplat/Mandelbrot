@@ -57,3 +57,9 @@ mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
  * as inteded and tests performance.
  */
 void check_run_point();
+
+/*
+ * Checks that iterative and multithreading give same results and compares
+ * the performance.
+ */
+void check_iterative_vs_multithreading();

@@ -33,32 +33,6 @@ int main() {
       rgb[i * 3 + 2] = c[2];
     }
   }
-  stbi_write_png("mandelbrot.png", WIDTH, HEIGHT, 3, rgb.data(), WIDTH * 3);
-}
-
-void check_correctness() {
-  Timer t_iter;
-  auto iterative_map = mandelbrot_points_iterative(
-      R_START, R_END, I_START, I_END, WIDTH, HEIGHT, MAX_ITER);
-  std::cout << "Time taken for iterative: " << t_iter.elapsed() << std::endl;
-  Timer t_multi;
-  auto multithreading_map = mandelbrot_points_multithreading(
-      R_START, R_END, I_START, I_END, WIDTH, HEIGHT, MAX_ITER);
-  std::cout << "Time taken for multithreading: " << t_multi.elapsed()
-            << std::endl;
-  int mismatches = 0;
-  for (size_t i = 0; i < iterative_map.size(); ++i) {
-    if (iterative_map[i] != multithreading_map[i]) {
-      if (mismatches < 20) {
-        std::cout << "Error at index " << i
-                  << ": iter=" << int(iterative_map[i])
-                  << " multi=" << int(multithreading_map[i]) << "\n";
-      }
-      ++mismatches;
-    }
-  }
-  if (mismatches) {
-    std::cout << "Total mismatches: " << mismatches << "/"
-              << iterative_map.size() << "\n";
-  }
+  stbi_write_png("mandelbrot.png", WIDTH, HEIGHT, 3, rgb.data(),
+                 WIDTH * 3 * sizeof(uint8_t));
 }

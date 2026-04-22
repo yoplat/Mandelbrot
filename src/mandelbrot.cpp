@@ -2,6 +2,14 @@
 #include <cstdint>
 #include <thread>
 
+#define R_START -2.0
+#define R_END 2.0
+#define I_START 2.0
+#define I_END -2.0
+#define WIDTH 800 * 2
+#define HEIGHT 800 * 2
+#define MAX_ITER 300
+
 void run_n_rows(std::vector<uint16_t> &map, double r_start, double x_res,
                 size_t width, double i_start, double y_res, size_t row_offset,
                 size_t n_rows, size_t max_iter) {
@@ -101,6 +109,33 @@ void check_run_point() {
             << std::endl;
   std::cout << "Time taken by double: " << double_total_time << "us"
             << std::endl;
+}
+
+void check_iterative_vs_multithreading() {
+  Timer t_iter;
+  auto iterative_map = mandelbrot_points_iterative(
+      R_START, R_END, I_START, I_END, WIDTH, HEIGHT, MAX_ITER);
+  std::cout << "Time taken for iterative: " << t_iter.elapsed() << std::endl;
+  Timer t_multi;
+  auto multithreading_map = mandelbrot_points_multithreading(
+      R_START, R_END, I_START, I_END, WIDTH, HEIGHT, MAX_ITER);
+  std::cout << "Time taken for multithreading: " << t_multi.elapsed()
+            << std::endl;
+  int mismatches = 0;
+  for (size_t i = 0; i < iterative_map.size(); ++i) {
+    if (iterative_map[i] != multithreading_map[i]) {
+      if (mismatches < 20) {
+        std::cout << "Error at index " << i
+                  << ": iter=" << int(iterative_map[i])
+                  << " multi=" << int(multithreading_map[i]) << "\n";
+      }
+      ++mismatches;
+    }
+  }
+  if (mismatches) {
+    std::cout << "Total mismatches: " << mismatches << "/"
+              << iterative_map.size() << "\n";
+  }
 }
 
 double square_norm(Complex c) {
