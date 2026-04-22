@@ -1,7 +1,8 @@
 #include "mandelbrot.h"
+#include <cstdint>
 #include <thread>
 
-void run_n_rows(std::vector<uint8_t> &map, double r_start, double x_res,
+void run_n_rows(std::vector<uint16_t> &map, double r_start, double x_res,
                 size_t width, double i_start, double y_res, size_t row_offset,
                 size_t n_rows, size_t max_iter) {
   for (size_t py = 0; py < n_rows; ++py) {
@@ -14,15 +15,16 @@ void run_n_rows(std::vector<uint8_t> &map, double r_start, double x_res,
   }
 }
 
-std::vector<uint8_t>
+std::vector<uint16_t>
 mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
                                  double i_end, size_t width, size_t height,
                                  size_t max_iter) {
-  std::vector<uint8_t> mandelbrot_map(width * height);
+  std::vector<uint16_t> mandelbrot_map(width * height);
   double x_res = (r_end - r_start) / double(width);
   double y_res = (i_end - i_start) / double(height);
   std::vector<std::thread> threads;
 
+  // On my machine with 16 threads this is equal to 64
   size_t n_chunks = std::thread::hardware_concurrency() * 4;
   size_t rows_per_thread = (height + n_chunks - 1) / n_chunks;
   // ROW MAJOR
@@ -36,11 +38,11 @@ mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
   return mandelbrot_map;
 }
 
-std::vector<uint8_t> mandelbrot_points_iterative(double r_start, double r_end,
-                                                 double i_start, double i_end,
-                                                 size_t width, size_t height,
-                                                 size_t max_iter) {
-  std::vector<uint8_t> mandelbrot_map(width * height);
+std::vector<uint16_t> mandelbrot_points_iterative(double r_start, double r_end,
+                                                  double i_start, double i_end,
+                                                  size_t width, size_t height,
+                                                  size_t max_iter) {
+  std::vector<uint16_t> mandelbrot_map(width * height);
   double x_res = (r_end - r_start) / double(width);
   double y_res = (i_end - i_start) / double(height);
 
@@ -55,15 +57,15 @@ std::vector<uint8_t> mandelbrot_points_iterative(double r_start, double r_end,
   return mandelbrot_map;
 }
 
-bool run_point_complex(Complex c, int max_iter) {
+uint16_t run_point_complex(Complex c, int max_iter) {
   Complex z_n = 0;
   int iter = 0;
   for (; iter < max_iter && square_norm(z_n) < 4; ++iter)
     z_n = z_n * z_n + c;
-  return iter == max_iter;
+  return iter;
 }
 
-bool run_point_double(double r, double i, int max_iter) {
+uint16_t run_point_double(double r, double i, int max_iter) {
   double r_n = 0;
   double i_n = 0;
   int iter = 0;
@@ -76,7 +78,7 @@ bool run_point_double(double r, double i, int max_iter) {
     r_n = r_temp;
     ++iter;
   }
-  return iter == max_iter;
+  return iter;
 }
 
 void check_run_point() {

@@ -1,4 +1,5 @@
 #include <complex>
+#include <cstdint>
 #include <vector>
 
 #include "timer.h"
@@ -17,7 +18,7 @@ double square_norm(Complex c);
  * diverge after `max_iter` then it's inside.
  * Uses the c++ Complex class.
  */
-bool run_point_complex(Complex c, int max_iter = 100);
+uint16_t run_point_complex(Complex c, int max_iter = 100);
 
 /*
  * Check if a point is inside the mandelbrot set.
@@ -26,7 +27,7 @@ bool run_point_complex(Complex c, int max_iter = 100);
  * diverge after `max_iter` then it's inside.
  * Uses simple double(s).
  */
-bool run_point_double(double r, double i, int max_iter = 100);
+uint16_t run_point_double(double r, double i, int max_iter = 100);
 
 /*
  * Returns a vector representing a grid of points to check if they are
@@ -35,10 +36,10 @@ bool run_point_double(double r, double i, int max_iter = 100);
  * `width` and `height` are the resolutions in the real and img axes;
  * Single threaded solution.
  */
-std::vector<uint8_t> mandelbrot_points_iterative(double r_start, double r_end,
-                                                 double i_start, double i_end,
-                                                 size_t width, size_t height,
-                                                 size_t max_iter = 100);
+std::vector<uint16_t> mandelbrot_points_iterative(double r_start, double r_end,
+                                                  double i_start, double i_end,
+                                                  size_t width, size_t height,
+                                                  size_t max_iter = 100);
 /*
  * Returns a vector representing a grid of points to check if they are
  * contained in the mandelbrot set.
@@ -46,7 +47,7 @@ std::vector<uint8_t> mandelbrot_points_iterative(double r_start, double r_end,
  * `width` and `height` are the resolutions in the real and img axes;
  * Single threaded solution.
  */
-std::vector<uint8_t>
+std::vector<uint16_t>
 mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
                                  double i_end, size_t width, size_t height,
                                  size_t max_iter = 100);
