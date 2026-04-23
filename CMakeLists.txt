@@ -29,6 +29,7 @@ target_link_options(project_flags INTERFACE
 add_executable(mandelbrot_cpu
     src/main_cpu.cpp
     src/mandelbrot.cpp
+    src/buddhabrot.cpp
     src/third_party/stb_image_write.cpp
 )
 target_include_directories(mandelbrot_cpu PRIVATE src)
