@@ -4,9 +4,9 @@
 #include <algorithm>
 
 #define R_START -2.0
-#define R_END 2.0
-#define I_START -2.0
-#define I_END 2.0
+#define R_END 1
+#define I_START -1.5
+#define I_END 1.5
 #define WIDTH 800 * 4
 #define HEIGHT 800 * 4
 #define MAX_ITER 1000
@@ -19,29 +19,34 @@ const uint8_t MANDELBROT_CLASSIC[16][3] = {
 };
 
 int main() {
-  // auto multithreading_map = mandelbrot_points_multithreading(
-  //     R_START, R_END, I_START, I_END, WIDTH, HEIGHT, MAX_ITER);
-  //
-  // std::vector<uint8_t> rgb(WIDTH * HEIGHT * 3);
-  // for (size_t i = 0; i < multithreading_map.size(); ++i) {
-  //   if (multithreading_map[i] == MAX_ITER) {
-  //     rgb[i * 3 + 0] = 0; // inside the set → black
-  //     rgb[i * 3 + 1] = 0;
-  //     rgb[i * 3 + 2] = 0;
-  //   } else {
-  //     const uint8_t *c = MANDELBROT_CLASSIC[multithreading_map[i] % 16];
-  //     rgb[i * 3 + 0] = c[0];
-  //     rgb[i * 3 + 1] = c[1];
-  //     rgb[i * 3 + 2] = c[2];
-  //   }
-  // }
-  auto map = buddhabrot_multithreading(R_START, R_END, I_START, I_END, WIDTH,
-                                       HEIGHT, MAX_ITER);
-  size_t max_count = *std::max_element(map.begin(), map.end());
-  std::vector<uint8_t> gray_map(WIDTH * HEIGHT);
-  for (size_t i = 0; i < map.size(); ++i) {
-    gray_map[i] = static_cast<uint8_t>((float)map[i] / max_count * 255);
+  Complex start{R_START, I_START};
+  Complex end{R_END, I_END};
+  Mandelbrot mandel(start, end, WIDTH, HEIGHT, MAX_ITER);
+  std::vector<uint16_t> mandel_map = mandel.get_map();
+  std::vector<uint8_t> rgb(WIDTH * HEIGHT * 3);
+  for (size_t i = 0; i < mandel_map.size(); ++i) {
+    if (mandel_map[i] == MAX_ITER) {
+      rgb[i * 3 + 0] = 0; // inside the set → black
+      rgb[i * 3 + 1] = 0;
+      rgb[i * 3 + 2] = 0;
+    } else {
+      const uint8_t *c = MANDELBROT_CLASSIC[mandel_map[i] % 16];
+      rgb[i * 3 + 0] = c[0];
+      rgb[i * 3 + 1] = c[1];
+      rgb[i * 3 + 2] = c[2];
+    }
   }
-  stbi_write_png("mandelbrot.png", WIDTH, HEIGHT, 1, gray_map.data(),
+  stbi_write_png("mandelbrot.png", WIDTH, HEIGHT, 3, rgb.data(),
+                 3 * WIDTH * sizeof(uint8_t));
+
+  Buddhabrot buddha(Complex{R_START, I_START}, Complex{R_END, I_END}, WIDTH,
+                    HEIGHT, WIDTH * HEIGHT * 10, MAX_ITER);
+  std::vector<uint32_t> buddha_map = buddha.get_map();
+  size_t max_count = *std::max_element(buddha_map.begin(), buddha_map.end());
+  std::vector<uint8_t> gray_map(WIDTH * HEIGHT);
+  for (size_t i = 0; i < buddha_map.size(); ++i) {
+    gray_map[i] = static_cast<uint8_t>((float)buddha_map[i] / max_count * 255);
+  }
+  stbi_write_png("buddhabrot.png", WIDTH, HEIGHT, 1, gray_map.data(),
                  WIDTH * sizeof(uint8_t));
 }

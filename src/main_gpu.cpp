@@ -1,6 +1,4 @@
 #include "glad/glad.h"
-#include <GL/gl.h>
-#include <GL/glext.h>
 #include <GLFW/glfw3.h>
 #include <fstream>
 #include <iostream>
@@ -21,9 +19,10 @@ void compile_shader_from_file(GLuint shader, const std::string &path);
 int main() {
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
   glfwWindowHint(GLFW_OPENGL_PROFILE,
                  GLFW_OPENGL_CORE_PROFILE); // Modern version
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
   GLFWwindow *window =
       glfwCreateWindow(WIDTH, HEIGHT, "Mandelbrot Visualization", NULL, NULL);

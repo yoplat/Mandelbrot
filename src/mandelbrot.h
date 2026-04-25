@@ -1,65 +1,28 @@
-#include <complex>
-#include <cstdint>
+#include "mcomplex.h"
 #include <vector>
 
-#include "timer.h"
+class Mandelbrot {
+public:
+  Mandelbrot(Complex start, Complex end, size_t width, size_t height,
+             size_t max_iter)
+      : map(0), start(start), end(end), width(width), height(height),
+        max_iter(max_iter) {}
 
-typedef std::complex<double> Complex;
+  void run();
 
-/*
- * Computes the square norm of a complex number c.
- */
-double square_norm(Complex c);
+  std::vector<uint16_t> &get_map() {
+    if (map.empty())
+      run();
+    return map;
+  }
 
-/*
- * Check if a point is inside the mandelbrot set.
- * This is done by iterating with the expression `z_n` = `z_n^2` + `c`, with
- * z_n starting from 0 and c being the input point coordinates. If `z_n` doesn't
- * diverge after `max_iter` then it's inside.
- * Uses the c++ Complex class.
- */
-uint16_t run_point_complex(Complex c, int max_iter = 100);
+private:
+  void run_n_rows(double x_res, double y_res, size_t row_offset, size_t n_rows);
 
-/*
- * Check if a point is inside the mandelbrot set.
- * This is done by iterating with the expression `z_n` = `z_n^2` + `c`, with
- * z_n starting from 0 and c being the input point coordinates. If `z_n` doesn't
- * diverge after `max_iter` then it's inside.
- * Uses simple double(s).
- */
-uint16_t run_point_double(double r, double i, int max_iter = 100);
+  uint16_t run_point(Complex c) const;
 
-/*
- * Returns a vector representing a grid of points to check if they are
- * contained in the mandelbrot set.
- * Each element is true iff it's inside the set.
- * `width` and `height` are the resolutions in the real and img axes;
- * Single threaded solution.
- */
-std::vector<uint16_t> mandelbrot_points_iterative(double r_start, double r_end,
-                                                  double i_start, double i_end,
-                                                  size_t width, size_t height,
-                                                  size_t max_iter = 100);
-/*
- * Returns a vector representing a grid of points to check if they are
- * contained in the mandelbrot set.
- * Each element is true iff it's inside the set.
- * `width` and `height` are the resolutions in the real and img axes;
- * Single threaded solution.
- */
-std::vector<uint16_t>
-mandelbrot_points_multithreading(double r_start, double r_end, double i_start,
-                                 double i_end, size_t width, size_t height,
-                                 size_t max_iter = 100);
-
-/*
- * Checks that both run_point_complex and run_point_double are working
- * as inteded and tests performance.
- */
-void check_run_point();
-
-/*
- * Checks that iterative and multithreading give same results and compares
- * the performance.
- */
-void check_iterative_vs_multithreading();
+  std::vector<uint16_t> map;
+  Complex start, end;
+  size_t width, height;
+  size_t max_iter;
+};

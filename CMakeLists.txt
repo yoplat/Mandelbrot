@@ -53,7 +53,7 @@ target_include_directories(mandelbrot_gpu PRIVATE
     ${GLFW_INCLUDE_DIRS}
 )
 target_link_libraries(mandelbrot_gpu PRIVATE
-    ${GLFW_LIBRARIES}
+    ${GLFW_LINK_LIBRARIES}
     OpenGL::GL
     m
     dl

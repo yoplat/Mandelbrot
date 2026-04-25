@@ -1,99 +1,98 @@
 #include "buddhabrot.h"
+#include <random>
 #include <thread>
 
-#define R_START -2.0
-#define R_END 2.0
-#define I_START 2.0
-#define I_END -2.0
-#define WIDTH 800 * 2
-#define HEIGHT 800 * 2
-#define MAX_ITER 300
-
-size_t point_to_int(double r, double start, double end, size_t n_points) {
-  int idx = (int)((r - start) / (end - start) * n_points);
-  if (idx < 0)
-    idx = 0;
-  if (idx >= (int)n_points)
-    idx = n_points - 1;
-  return (size_t)idx;
+Buddhabrot::Buddhabrot(Complex start, Complex end, size_t width, size_t height,
+                       size_t n_points, size_t max_iter)
+    : start(start), end(end), width(width), height(height), n_points(n_points),
+      max_iter(max_iter) {
+  n_threads = std::thread::hardware_concurrency() * 4;
+  points_per_thread = (n_points + n_threads - 1) / n_threads;
 }
 
-void run_single_point(std::vector<uint32_t> &total_point_count,
-                      std::vector<std::pair<size_t, size_t>> &point_cloud,
-                      double r, double i, double r_start, double r_end,
-                      double i_start, double i_end, size_t width, size_t height,
-                      size_t max_iter) {
-  point_cloud.clear();
-  double r_n = 0;
-  double i_n = 0;
-  size_t iter = 0;
-  while (iter < max_iter && (r_n * r_n + i_n * i_n) < 4) {
-    double r_temp = r_n * r_n - i_n * i_n + r;
-    i_n = 2 * r_n * i_n + i;
-    r_n = r_temp;
-    if (r_n >= r_start && r_n < r_end && i_n >= i_start && i_n < i_end) {
-      size_t r_index = point_to_int(r_n, r_start, r_end, width);
-      size_t i_index = point_to_int(i_n, i_start, i_end, height);
-      point_cloud.push_back(std::make_pair(r_index, i_index));
-    }
-    ++iter;
-  }
-  if (iter < max_iter) {
-    for (auto &p : point_cloud) {
-      total_point_count[p.second * width + p.first]++;
-    }
-  }
-}
+void Buddhabrot::run() {
+  point_count.resize(width * height, 0);
+  thread_maps.clear();
 
-void run_n_rows(std::vector<uint32_t> &total_point_count, double r_start,
-                double r_end, double i_start, double i_end, size_t width,
-                size_t height, size_t row_offset, size_t n_rows,
-                size_t max_iter) {
-  std::vector<std::pair<size_t, size_t>> point_cloud;
-  point_cloud.reserve(max_iter);
-  double x_res = (r_end - r_start) / double(width);
-  double y_res = (i_end - i_start) / double(height);
-  for (size_t py = 0; py < n_rows; ++py) {
-    size_t row = row_offset + py;
-    double i = i_start + row * y_res;
-    for (size_t px = 0; px < width; ++px) {
-      double r = r_start + px * x_res;
-      run_single_point(total_point_count, point_cloud, r, i, r_start, r_end,
-                       i_start, i_end, width, height, max_iter);
-    }
+  for (size_t i = 0; i < n_threads; i++) {
+    thread_maps.push_back(std::vector<uint32_t>(width * height));
   }
-}
-
-std::vector<uint32_t> buddhabrot_multithreading(double r_start, double r_end,
-                                                double i_start, double i_end,
-                                                size_t width, size_t height,
-                                                size_t max_iter) {
-  std::vector<uint32_t> buddhabrot_map(width * height);
-  // On my machine with 16 threads this is equal to 64
-  size_t n_chunks = std::thread::hardware_concurrency() * 4;
-  size_t rows_per_thread = (height + n_chunks - 1) / n_chunks;
 
   std::vector<std::thread> threads;
-  std::vector<std::vector<uint32_t>> threads_maps;
-  for (size_t i = 0; i < n_chunks; i++) {
-    threads_maps.push_back(std::vector<uint32_t>(width * height));
+  for (size_t i = 0; i < n_points; i += points_per_thread) {
+    size_t thread_index = i / points_per_thread;
+    threads.emplace_back([this, thread_index] { run_n_points(thread_index); });
   }
 
-  // ROW MAJOR
-  for (size_t py = 0; py < height; py += rows_per_thread) {
-    size_t rows = std::min<size_t>(rows_per_thread, height - py);
-    size_t chunk_idx = py / rows_per_thread;
-    threads.emplace_back(run_n_rows, std::ref(threads_maps[chunk_idx]), r_start,
-                         r_end, i_start, i_end, width, height, py, rows,
-                         max_iter);
-  }
   size_t index = 0;
   for (auto &t : threads) {
     t.join();
     for (size_t i = 0; i < width * height; ++i) {
-      buddhabrot_map[i] += threads_maps[index][i];
+      point_count[i] += thread_maps[index][i];
     }
     index++;
   }
-  return buddhabrot_map;
+}
+
+std::vector<uint32_t> &Buddhabrot::get_map() {
+  if (point_count.empty())
+    run();
+  return point_count;
+}
+
+void Buddhabrot::run_n_points(size_t thread_index) {
+  std::mt19937 rng;
+  std::uniform_real_distribution<double> real_distrib(start.r, end.r);
+  std::uniform_real_distribution<double> imag_distrib(start.i, end.i);
+  rng.seed(
+      std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
+  std::vector<std::pair<size_t, size_t>> point_cloud;
+  point_cloud.reserve(max_iter);
+  for (size_t i = 0; i < points_per_thread; ++i) {
+    Complex c;
+    for (;;) {
+      c = {real_distrib(rng), imag_distrib(rng)};
+      // Checks if point is in main cardioid
+      double p = sqrt(((c.r - 1 / 4.0) * (c.r - 1 / 4.0)) + (c.i * c.i));
+      double x = p - (2 * p * p) + 1 / 4.0;
+      // If inside then skip the cycle for this point
+      if (c.r <= x)
+        continue;
+      // Checks if point is in the second cardioid
+      x = (c.r + 1) * (c.r + 1) + c.i * c.i;
+      if (x <= 1 / 16.0)
+        continue;
+      break;
+    }
+    run_single_point(thread_index, point_cloud, c);
+  }
+}
+
+void Buddhabrot::run_single_point(
+    size_t thread_index, std::vector<std::pair<size_t, size_t>> &point_cloud,
+    Complex &c) {
+  std::vector<uint32_t> &thread_map = thread_maps[thread_index];
+  point_cloud.clear();
+
+  Complex z_n = {0.0, 0.0};
+  size_t iter = 0;
+  while (iter < max_iter && z_n.square_norm() < 4) {
+    double r_temp = z_n.r * z_n.r - z_n.i * z_n.i + c.r;
+    z_n.i = 2.0 * z_n.r * z_n.i + c.i;
+    z_n.r = r_temp;
+    if (z_n.r >= start.r && z_n.r < end.r && z_n.i >= start.i &&
+        z_n.i < end.i) {
+      size_t r_index = point_to_index(z_n.r, start.r, end.r, width);
+      size_t i_index = point_to_index(z_n.i, start.i, end.i, height);
+      point_cloud.push_back(std::make_pair(r_index, i_index));
+    }
+    ++iter;
+  }
+
+  if (iter < max_iter) {
+    for (auto &p : point_cloud) {
+      thread_map[p.second * width + p.first]++;
+    }
+  }
 }
