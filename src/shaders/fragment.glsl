@@ -1,13 +1,13 @@
-#version 330 core
+#version 410 core
 
 out vec4 FragColor;
 
-uniform vec2 u_min;
-uniform vec2 u_max;
+uniform dvec2 u_min;
+uniform dvec2 u_max;
 uniform int max_iter;
-uniform vec2 resolution;
-uniform vec2 offset;
-uniform vec2 zoom;
+uniform dvec2 resolution;
+uniform dvec2 offset;
+uniform dvec2 zoom;
 
 const vec3 palette[16] = vec3[16](
     vec3(66, 30, 15),
@@ -30,16 +30,16 @@ const vec3 palette[16] = vec3[16](
 
 void main()
 {
-  vec2 center = (u_min + u_max) * 0.5 + offset;
-  vec2 size = (u_max - u_min) * zoom;
+  dvec2 center = (u_min + u_max) * 0.5 + offset;
+  dvec2 size = (u_max - u_min) * zoom;
 
-  vec2 uv = (gl_FragCoord.xy + 0.5) / resolution;
-  vec2 c = center + (uv - 0.5) * size;
-  vec2 z = vec2(0.0);
+  dvec2 uv = (gl_FragCoord.xy + 0.5) / resolution;
+  dvec2 c = center + (uv - 0.5) * size;
+  dvec2 z = dvec2(0.0);
 
   int iter = 0;
   while (iter < max_iter && dot(z, z) < 4.0) {
-    z = vec2(
+    z = dvec2(
       z.x * z.x - z.y * z.y + c.x,
       2.0 * z.x * z.y + c.y
     );

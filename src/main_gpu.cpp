@@ -1,6 +1,5 @@
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
-#include <OpenGL/gl.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -25,7 +24,8 @@ const float vertices[] = {
 
 // Callback when windows get resized
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window, float zoom[2], float offset[2]);
+void processInput(GLFWwindow *window, double zoom[2], double offset[2],
+                  size_t &max_iter);
 std::string read_file(const std::string &path);
 void compile_shader_from_file(GLuint shader, const std::string &path);
 void shaders_to_program(uint shader_program, uint vertex_shader,
@@ -76,16 +76,16 @@ int main() {
   int resLocation = glGetUniformLocation(shader_program, "resolution");
   int zoomLocation = glGetUniformLocation(shader_program, "zoom");
   int offsetLocation = glGetUniformLocation(shader_program, "offset");
-  glUniform2f(minPointLocation, R_START, I_START);
-  glUniform2f(maxPointLocation, R_END, I_END);
-  glUniform1i(maxIterLocation, MAX_ITER);
+  glUniform2d(minPointLocation, R_START, I_START);
+  glUniform2d(maxPointLocation, R_END, I_END);
 
-  float zoom[2] = {1.0f, 1.0f};
-  float offset[2] = {0.0f, 0.0f};
+  double zoom[2] = {1.0f, 1.0f};
+  double offset[2] = {0.0f, 0.0f};
+  size_t max_iter = MAX_ITER;
 
   // bool changed = true;
   while (!glfwWindowShouldClose(window)) {
-    processInput(window, zoom, offset);
+    processInput(window, zoom, offset, max_iter);
 
     // if (changed) {
     glClearColor(1.0f, 0.f, 0.f, 1.0f); // state-setting function for glClear
@@ -94,9 +94,10 @@ int main() {
     glUseProgram(shader_program);
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    glUniform2f(resLocation, width, height);
-    glUniform2f(zoomLocation, zoom[0], zoom[1]);
-    glUniform2f(offsetLocation, offset[0], offset[1]);
+    glUniform2d(resLocation, width, height);
+    glUniform2d(zoomLocation, zoom[0], zoom[1]);
+    glUniform2d(offsetLocation, offset[0], offset[1]);
+    glUniform1i(maxIterLocation, max_iter);
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -174,28 +175,35 @@ std::string read_file(const std::string &path) {
   return ss.str();
 }
 
-void processInput(GLFWwindow *window, float *zoom, float *offset) {
+void processInput(GLFWwindow *window, double *zoom, double *offset,
+                  size_t &max_iter) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
   if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) {
-    zoom[0] *= 1.05;
-    zoom[1] *= 1.05;
-  }
-  if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
     zoom[0] *= 0.95;
     zoom[1] *= 0.95;
   }
+  if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+    zoom[0] *= 1.05;
+    zoom[1] *= 1.05;
+  }
+  if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+    offset[0] -= 0.03 * zoom[0];
+  }
+  if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+    offset[0] += 0.03 * zoom[0];
+  }
+  if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+    offset[1] += 0.03 * zoom[1];
+  }
+  if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+    offset[1] -= 0.03 * zoom[1];
+  }
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-    offset[0] -= 0.05;
-  }
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    offset[0] += 0.05;
-  }
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    offset[1] += 0.05;
+    max_iter += 1;
   }
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    offset[1] -= 0.05;
+    max_iter -= 1;
   }
 }
 

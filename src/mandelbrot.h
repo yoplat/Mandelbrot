@@ -1,4 +1,5 @@
 #include "mcomplex.h"
+#include <cstdint>
 #include <vector>
 
 class Mandelbrot {
