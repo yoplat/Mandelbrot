@@ -4,23 +4,14 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include <vector>
 
 #define WIDTH 800
 #define HEIGHT 800
 #define R_START -2.0
-#define R_END 2.0
-#define I_START -2.0
-#define I_END 2.0
+#define R_END 1
+#define I_START -1.5
+#define I_END 1.5
 #define MAX_ITER 100
-#define MAX_ORBIT_SIZE 10000
-
-#define PrecisionType double
-
-struct Complex {
-  PrecisionType r;
-  PrecisionType i;
-};
 
 // clang-format on
 const float vertices[] = {
@@ -35,10 +26,10 @@ struct AppState {
   bool changed;
 };
 
-std::vector<Complex> compute_ref_point(PrecisionType *offset, size_t max_iter);
+// Callback when windows get resized
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window, PrecisionType zoom[2],
-                  PrecisionType offset[2], size_t &max_iter);
+void processInput(GLFWwindow *window, double zoom[2], double offset[2],
+                  size_t &max_iter);
 std::string read_file(const std::string &path);
 void compile_shader_from_file(GLuint shader, const std::string &path);
 void shaders_to_program(uint shader_program, uint vertex_shader,
@@ -73,17 +64,10 @@ int main() {
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
 
-  // Creates state machine vertex attribute object for vertex buffers and
-  // attrib
+  // Creates state machine vertex attribute object for vertex buffers and attrib
   uint VAO, VBO;
-  GLuint orbitSSBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
-
-  glGenBuffers(1, &orbitSSBO);
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, orbitSSBO);
-  glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_ORBIT_SIZE * sizeof(Complex),
-               nullptr, GL_DYNAMIC_DRAW);
 
   glBindVertexArray(VAO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -99,38 +83,27 @@ int main() {
   int maxIterLocation = glGetUniformLocation(shader_program, "max_iter");
   int resLocation = glGetUniformLocation(shader_program, "resolution");
   int zoomLocation = glGetUniformLocation(shader_program, "zoom");
-  int centerLocation = glGetUniformLocation(shader_program, "u_center");
+  int offsetLocation = glGetUniformLocation(shader_program, "offset");
   glUniform2d(minPointLocation, R_START, I_START);
   glUniform2d(maxPointLocation, R_END, I_END);
 
-  PrecisionType zoom[2] = {1.0, 1.0};
-  PrecisionType offset[2] = {0.0, 0.0};
+  double zoom[2] = {1.0f, 1.0f};
+  double offset[2] = {0.0f, 0.0f};
   size_t max_iter = MAX_ITER;
 
   while (!glfwWindowShouldClose(window)) {
     if (state.changed) {
-      // Path taken by the center pixel
-      std::vector<Complex> orbit = compute_ref_point(offset, max_iter);
-
-      glClearColor(1.0f, 0.f, 0.f,
-                   1.0f); // state-setting function for glClear
+      glClearColor(1.0f, 0.f, 0.f, 1.0f); // state-setting function for glClear
       glClear(
           GL_COLOR_BUFFER_BIT); // clears the color buffer (there are others)
 
       glUseProgram(shader_program);
-
       int width, height;
       glfwGetFramebufferSize(window, &width, &height);
       glUniform2d(resLocation, width, height);
-
       glUniform2d(zoomLocation, zoom[0], zoom[1]);
+      glUniform2d(offsetLocation, offset[0], offset[1]);
       glUniform1i(maxIterLocation, max_iter);
-      glUniform2d(minPointLocation, R_START + offset[0], I_START + offset[1]);
-      glUniform2d(maxPointLocation, R_END + offset[0], I_END + offset[1]);
-
-      glBufferData(GL_SHADER_STORAGE_BUFFER, orbit.size() * sizeof(Complex),
-                   orbit.data(), GL_DYNAMIC_DRAW);
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, orbitSSBO);
 
       glBindVertexArray(VAO);
       glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -151,27 +124,8 @@ int main() {
   return 0;
 }
 
-std::vector<Complex> compute_ref_point(PrecisionType *offset, size_t max_iter) {
-  Complex c = {(R_START + R_END) * 0.5 + offset[0],
-               (I_START + I_END) * 0.5 + offset[1]};
-
-  Complex z = {0.0, 0.0};
-  size_t iter = 0;
-  std::vector<Complex> path;
-  path.reserve(max_iter);
-  // NOTE: needs the entire sequence because it's the reference for all others
-  while (iter < max_iter) {
-    path.push_back(z);
-    PrecisionType r_temp = z.r * z.r - z.i * z.i + c.r;
-    z.i = 2 * z.r * z.i + c.i;
-    z.r = r_temp;
-    ++iter;
-  }
-  return path;
-}
-
-void processInput(GLFWwindow *window, PrecisionType *zoom,
-                  PrecisionType *offset, size_t &max_iter) {
+void processInput(GLFWwindow *window, double *zoom, double *offset,
+                  size_t &max_iter) {
   auto *state = static_cast<AppState *>(glfwGetWindowUserPointer(window));
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
@@ -216,9 +170,12 @@ GLFWwindow *create_window(size_t width, size_t height, const char *title) {
   // initialize glfw and configure opengl version
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
   glfwWindowHint(GLFW_OPENGL_PROFILE,
                  GLFW_OPENGL_CORE_PROFILE); // Modern version
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
   GLFWwindow *window = glfwCreateWindow(width, height, title, NULL, NULL);
   if (window == NULL) {

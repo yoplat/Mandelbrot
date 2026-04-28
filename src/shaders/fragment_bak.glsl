@@ -1,17 +1,13 @@
-#version 460 core
+#version 410 core
 
 out vec4 FragColor;
-
-layout(std430, binding = 0) readonly buffer c_path {
-    dvec2 z_n[];
-};
 
 uniform dvec2 u_min;
 uniform dvec2 u_max;
 uniform int max_iter;
 uniform dvec2 resolution;
+uniform dvec2 offset;
 uniform dvec2 zoom;
-uniform dvec2 u_center;
 
 const vec3 palette[16] = vec3[16](
     vec3(66, 30, 15),
@@ -34,25 +30,20 @@ const vec3 palette[16] = vec3[16](
 
 void main()
 {
+  dvec2 center = (u_min + u_max) * 0.5 + offset;
   dvec2 size = (u_max - u_min) * zoom;
-  dvec2 uv = (gl_FragCoord.xy + 0.5) / resolution;
-  dvec2 epsilon = (uv - 0.5) * size;  // where size = (u_max - u_min) * zoom
 
-  dvec2 d_n = dvec2(0.0);
+  dvec2 uv = (gl_FragCoord.xy + 0.5) / resolution;
+  dvec2 c = center + (uv - 0.5) * size;
+  dvec2 z = dvec2(0.0);
+
   int iter = 0;
-  dvec2 z_nn = z_n[iter] + d_n;
-  while (iter < max_iter && z_nn.x * z_nn.x + z_nn.y * z_nn.y < 4.0) {
-    d_n = dvec2(
-      // d_n+1 = 2 * z_n * d_n + d_n ^ 2 + eps
-      // 2 * z_n * d_n = 2(ac - bd) + 2(ad + bc)i
-      // d_n ^ 2 = (a^2 - b^2) + 2abi
-      2 * (z_n[iter].x * d_n.x - z_n[iter].y * d_n.y) + (d_n.x * d_n.x - d_n.y * d_n.y) + epsilon.x,
-      2 * (z_n[iter].x * d_n.y + z_n[iter].y * d_n.x) + 2 * d_n.x * d_n.y + epsilon.y
+  while (iter < max_iter && dot(z, z) < 4.0) {
+    z = dvec2(
+      z.x * z.x - z.y * z.y + c.x,
+      2.0 * z.x * z.y + c.y
     );
     iter++;
-
-    if(iter < max_iter)
-      z_nn = z_n[iter] + d_n;
   }
 
   if (iter == max_iter) {
